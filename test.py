@@ -1,63 +1,40 @@
-# pip install langgraph langchain-core typing_extensions faiss-cpu sentence-transformers
+import Ollama  # Or direct Ollama Python API if available
 
-from sentence_transformers import SentenceTransformer
-from langchain_core.documents import Document
-from langchain.vectorstores import FAISS
-from langchain.embeddings import HuggingFaceEmbeddings
-from typing_extensions import List, TypedDict
-from langgraph.graph import StateGraph, START, END
-from langchain.llms import Ollama
-
-# 1. College Info Documents
+# 1. Your college info documents
 documents = [
-    Document(page_content="Admissions close on July 31st."),
-    Document(page_content="The library is open from 8AM to 8PM."),
-    Document(page_content="KGISL Institute of Technology offers AI, ML, and Data Science degrees."),
-    Document(page_content="Semester registration opens in June and closes in July."),
+    "Admissions close on July 31st.",
+    "The library is open from 8AM to 8PM.",
+    "KGISL Institute of Technology offers AI, ML, and Data Science degrees.",
+    "Semester registration opens in June and closes in July.",
 ]
 
-# 2. Embeddings + Vector Store
-embed_model = 'all-MiniLM-L6-v2'
-embeddings = HuggingFaceEmbeddings(model_name=embed_model)
-vector_db = FAISS.from_documents(documents, embedding=embeddings)
+# 2. Simple retrieval based on keywords in query
+def retrieve_docs(query, docs):
+    query_words = set(query.lower().split())
+    filtered_docs = [doc for doc in docs if query_words.intersection(doc.lower().split())]
+    # Return up to 3 relevant docs or all if few
+    return filtered_docs[:3] if filtered_docs else docs[:3]
 
-# 3. LLM Setup (Ollama, replace as needed)
+# 3. Initialize Ollama LLM
 llm = Ollama(model='llama3')
 
-# 4. Define LangGraph State
-class RAGState(TypedDict):
-    question: str
-    context: List[Document]
-    answer: str
-
-# 5. Define retrieval and generation steps
-def search(state: RAGState):
-    retrieved_docs = vector_db.similarity_search(state["question"])
-    return {"context": retrieved_docs}
-
-def generate(state: RAGState):
-    docs_content = "\n\n".join(doc.page_content for doc in state["context"])
-    system_prompt = (
-        "You are a college admin assistant. Use only the context provided to answer. "
-        "If not found, say 'I don't know.'"
+# 4. Create prompt using retrieved docs and question
+def create_prompt(context_docs, question):
+    context_text = "\n".join(context_docs)
+    prompt = (
+        "You are a helpful college admin assistant. Use only the information below to answer the question.\n\n"
+        f"CONTEXT:\n{context_text}\n\nQUESTION:\n{question}\n\nANSWER:"
     )
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": f"CONTEXT:\n{docs_content}\nQUESTION:\n{state['question']}"}
-    ]
-    response = llm.invoke(messages)
-    return {"answer": response.content}
+    return prompt
 
-# 6. Build LangGraph workflow
-graph_builder = StateGraph(RAGState)
-graph_builder.add_node("search", search)
-graph_builder.add_node("generate", generate)
-graph_builder.add_edge(START, "search")
-graph_builder.add_edge("search", "generate")
-graph_builder.add_edge("generate", END)
-graph = graph_builder.compile()
+# 5. Complete RAG function
+def rag_answer(query):
+    context = retrieve_docs(query, documents)
+    prompt = create_prompt(context, query)
+    response = llm.invoke([{"role": "user", "content": prompt}])
+    return response.content
 
-# 7. Run a query
-user_query = "Which degrees does KGISL Institute of Technology offer?"
-result = graph.invoke({"question": user_query, "context": [], "answer": ""})
-print(result['answer'])
+# Example usage
+query = "What degrees are offered at KGISL Institute of Technology?"
+answer = rag_answer(query)
+print(answer)
