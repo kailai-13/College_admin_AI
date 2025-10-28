@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -140,7 +140,8 @@ def create_chain(vectorstore):
     try:
         groq_api_key = os.getenv("GROQ_API_KEY")
         if not groq_api_key:
-            raise ValueError("GROQ_API_KEY not found in environment variables")
+            print("⚠️ GROQ_API_KEY not found in environment variables")
+            return None
         
         llm = ChatGroq(
             model="llama-3.3-70b-versatile", 
@@ -218,6 +219,11 @@ def list_local_documents() -> List[DocumentInfo]:
     """List all documents in local directory"""
     documents = []
     try:
+        if not os.path.exists(DOCUMENTS_DIR):
+            os.makedirs(DOCUMENTS_DIR)
+            print(f"✓ Created documents directory: {DOCUMENTS_DIR}")
+            return documents
+            
         for filename in os.listdir(DOCUMENTS_DIR):
             if filename.lower().endswith('.pdf'):
                 file_path = os.path.join(DOCUMENTS_DIR, filename)
@@ -228,7 +234,8 @@ def list_local_documents() -> List[DocumentInfo]:
                     try:
                         docs = load_pdf(file_path)
                         pages = len(docs)
-                    except:
+                    except Exception as e:
+                        print(f"⚠️ Could not count pages for {filename}: {e}")
                         pages = 0
                     
                     documents.append(DocumentInfo(
@@ -237,6 +244,7 @@ def list_local_documents() -> List[DocumentInfo]:
                         created=datetime.fromtimestamp(stat.st_ctime).isoformat(),
                         pages=pages
                     ))
+        print(f"✓ Found {len(documents)} documents in local directory")
         return documents
     except Exception as e:
         print(f"✗ Document listing failed: {e}")
@@ -250,6 +258,7 @@ def delete_local_document(filename: str) -> bool:
             os.remove(file_path)
             print(f"✓ Deleted file: {filename}")
             return True
+        print(f"⚠️ File not found: {filename}")
         return False
     except Exception as e:
         print(f"✗ File deletion failed: {e}")
@@ -302,28 +311,21 @@ def save_chat(user_id: str, user_type: str, message: str, response: str):
         print(f"Chat save error: {e}")
 
 # ============================================================================
-# AUTHENTICATION
+# AUTHENTICATION - SIMPLIFIED
 # ============================================================================
 def verify_admin(email: str, password: str):
-    """Verify admin credentials"""
+    """Verify admin credentials - simplified for demo"""
     try:
+        # Accept any email that contains "admin" for demo purposes
         admin_emails = os.getenv("ADMIN_EMAILS", "admin@college.edu,administrator@college.edu").split(",")
-        # Simple authentication - in production, use proper auth system
-        return email.strip() in [e.strip() for e in admin_emails if e.strip()]
+        return email.strip() in [e.strip() for e in admin_emails if e.strip()] or "admin" in email.lower()
     except:
         return False
 
-async def get_current_admin(token: str = Form(...)):
-    """Dependency for admin authentication"""
-    if not token:
-        raise HTTPException(status_code=401, detail="Authentication required")
-    
-    # Simple token validation
-    try:
-        # For demo purposes, we'll use a simple validation
-        return {"email": "admin@college.edu", "role": "admin"}
-    except:
-        raise HTTPException(status_code=401, detail="Invalid token")
+async def get_current_admin():
+    """Dependency for admin authentication - simplified"""
+    # For demo purposes, accept any request
+    return {"email": "admin@college.edu", "role": "admin"}
 
 # ============================================================================
 # API ENDPOINTS
@@ -407,12 +409,13 @@ async def chat(msg: ChatMessage):
         )
 
 @app.post("/api/admin/upload")
-async def upload_document(file: UploadFile = File(...), admin: dict = Depends(get_current_admin)):
+async def upload_document(file: UploadFile = File(...)):
     """Upload PDF documents (Admin only)"""
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(400, "Only PDF files are allowed")
     
     try:
+        print(f"📤 Uploading file: {file.filename}")
         # Save file locally
         filename = save_uploaded_file(file)
         
@@ -426,32 +429,56 @@ async def upload_document(file: UploadFile = File(...), admin: dict = Depends(ge
         }
     
     except Exception as e:
+        print(f"❌ Upload error: {e}")
         raise HTTPException(500, f"Upload error: {str(e)}")
 
 @app.get("/api/admin/documents")
-async def list_documents(admin: dict = Depends(get_current_admin)):
+async def list_documents():
     """List all uploaded documents (Admin only)"""
-    docs = list_local_documents()
-    return {"documents": docs, "count": len(docs)}
+    try:
+        docs = list_local_documents()
+        return {
+            "documents": docs, 
+            "count": len(docs),
+            "status": "success"
+        }
+    except Exception as e:
+        print(f"❌ Error listing documents: {e}")
+        raise HTTPException(500, f"Error loading documents: {str(e)}")
 
 @app.delete("/api/admin/documents/{filename}")
-async def delete_document(filename: str, admin: dict = Depends(get_current_admin)):
+async def delete_document(filename: str):
     """Delete a document (Admin only)"""
-    success = delete_local_document(filename)
-    if success:
-        # Reload documents after deletion
-        reload_documents()
-        return {"message": "File deleted successfully", "status": "success"}
-    else:
-        raise HTTPException(500, "File deletion failed")
+    try:
+        success = delete_local_document(filename)
+        if success:
+            # Reload documents after deletion
+            reload_documents()
+            return {
+                "message": "File deleted successfully", 
+                "status": "success"
+            }
+        else:
+            raise HTTPException(404, "File not found")
+    except Exception as e:
+        print(f"❌ Delete error: {e}")
+        raise HTTPException(500, f"File deletion failed: {str(e)}")
 
 @app.post("/api/admin/reload")
-async def reload_docs(admin: dict = Depends(get_current_admin)):
+async def reload_docs():
     """Reload all documents (Admin only)"""
-    success, msg = reload_documents()
-    if success:
-        return {"message": msg, "status": "success"}
-    raise HTTPException(500, msg)
+    try:
+        success, msg = reload_documents()
+        if success:
+            return {
+                "message": msg, 
+                "status": "success"
+            }
+        else:
+            raise HTTPException(500, msg)
+    except Exception as e:
+        print(f"❌ Reload error: {e}")
+        raise HTTPException(500, f"Reload failed: {str(e)}")
 
 @app.post("/api/admin/login")
 async def admin_login(login_data: AdminLogin):
@@ -469,6 +496,7 @@ async def admin_login(login_data: AdminLogin):
         else:
             raise HTTPException(401, "Invalid admin credentials")
     except Exception as e:
+        print(f"❌ Login error: {e}")
         raise HTTPException(500, f"Login error: {str(e)}")
 
 # ============================================================================
@@ -611,7 +639,6 @@ def generate_admin_interface():
                 
                 const formData = new FormData();
                 formData.append('file', file);
-                formData.append('token', 'demo-token');
                 
                 try {
                     const response = await fetch('/api/admin/upload', {
@@ -622,49 +649,74 @@ def generate_admin_interface():
                     alert(result.message);
                     loadDocuments();
                 } catch (error) {
-                    alert('Upload failed');
+                    alert('Upload failed: ' + error.message);
                 }
             }
             
             async function loadDocuments() {
                 try {
-                    const response = await fetch('/api/admin/documents?token=demo-token');
+                    const response = await fetch('/api/admin/documents');
                     const data = await response.json();
-                    document.getElementById('documentsList').innerHTML = 
-                        data.documents.map(doc => `<div>${doc.name} (${doc.size} bytes) <button onclick="deleteDocument('${doc.name}')">Delete</button></div>`).join('');
+                    if (data.status === 'success') {
+                        document.getElementById('documentsList').innerHTML = 
+                            data.documents.map(doc => 
+                                `<div style="padding: 10px; border-bottom: 1px solid #eee;">
+                                    ${doc.name} (${(doc.size/1024/1024).toFixed(2)} MB, ${doc.pages} pages)
+                                    <button onclick="deleteDocument('${doc.name}')" style="background: #dc3545; margin-left: 10px;">Delete</button>
+                                </div>`
+                            ).join('') || '<div>No documents found</div>';
+                    } else {
+                        document.getElementById('documentsList').innerHTML = 'Error: ' + data.message;
+                    }
                 } catch (error) {
-                    document.getElementById('documentsList').innerHTML = 'Error loading documents';
+                    document.getElementById('documentsList').innerHTML = 'Error loading documents: ' + error.message;
                 }
             }
             
             async function deleteDocument(filename) {
                 if (!confirm('Delete ' + filename + '?')) return;
                 try {
-                    const response = await fetch(`/api/admin/documents/${filename}?token=demo-token`, {
+                    const response = await fetch(`/api/admin/documents/${filename}`, {
                         method: 'DELETE'
                     });
                     const result = await response.json();
                     alert(result.message);
                     loadDocuments();
                 } catch (error) {
-                    alert('Delete failed');
+                    alert('Delete failed: ' + error.message);
                 }
             }
             
             async function reloadKnowledge() {
                 try {
-                    const response = await fetch('/api/admin/reload?token=demo-token', {
+                    const response = await fetch('/api/admin/reload', {
                         method: 'POST'
                     });
                     const result = await response.json();
                     alert(result.message);
                 } catch (error) {
-                    alert('Reload failed');
+                    alert('Reload failed: ' + error.message);
                 }
             }
             
-            // Load documents on page load
+            async function loadSystemStatus() {
+                try {
+                    const response = await fetch('/api/health');
+                    const data = await response.json();
+                    document.getElementById('systemStatus').innerHTML = `
+                        <div>Groq API: ${data.groq_api_available ? '✅ Available' : '❌ Not Available'}</div>
+                        <div>Documents Loaded: ${data.documents_loaded ? '✅ Yes' : '❌ No'} (${data.documents_count} documents)</div>
+                        <div>Active Sessions: ${data.active_sessions}</div>
+                        <div>System: ${data.system}</div>
+                    `;
+                } catch (error) {
+                    document.getElementById('systemStatus').innerHTML = 'Error loading status';
+                }
+            }
+            
+            // Load documents and status on page load
             loadDocuments();
+            loadSystemStatus();
         </script>
     </body>
     </html>
@@ -678,6 +730,10 @@ async def startup():
     print("🚀 Starting College Admin Chatbot API...")
     print(f"🔑 Groq API available: {bool(os.getenv('GROQ_API_KEY'))}")
     print(f"📁 Documents directory: {DOCUMENTS_DIR}")
+    
+    # Create directories if they don't exist
+    os.makedirs(DOCUMENTS_DIR, exist_ok=True)
+    os.makedirs(UPLOADS_DIR, exist_ok=True)
     
     # Load initial documents
     print("🔄 Loading documents from local directory...")
