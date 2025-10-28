@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Admin Chatbot</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* All CSS styles from previous implementation */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        /* Header Styles */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header h1 {
+            color: #4a5568;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .header h1 i {
+            color: #667eea;
+            margin-right: 10px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+
+        .nav-btn {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .nav-btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        /* Main Content Layout */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            align-items: start;
+        }
+
+        /* Chat Container */
+        .chat-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 0;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            height: 70vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header h2 {
+            color: #4a5568;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #718096;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #48bb78;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.offline {
+            background: #e53e3e;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Chat Messages */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            max-width: 80%;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-message {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .bot-message {
+            align-self: flex-start;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .user-message .message-avatar {
+            background: #667eea;
+            color: white;
+        }
+
+        .bot-message .message-avatar {
+            background: #edf2f7;
+            color: #4a5568;
+        }
+
+        .message-content {
+            background: #f7fafc;
+            padding: 15px 20px;
+            border-radius: 18px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            max-width: 100%;
+            word-wrap: break-word;
+        }
+
+        .user-message .message-content {
+            background: #667eea;
+            color: white;
+        }
+
+        .message-content p {
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        /* Chat Input */
+        .chat-input-container {
+            padding: 20px 30px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+            font-family: inherit;
+        }
+
+        #messageInput:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .send-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .send-button:hover:not(:disabled) {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        .send-button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .input-footer {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 8px;
+        }
+
+        .char-count {
+            font-size: 0.8rem;
+            color: #718096;
+        }
+
+        /* Info Panel */
+        .info-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-panel h3 {
+            color: #4a5568;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .capabilities-list {
+            list-style: none;
+            margin-bottom: 30px;
+        }
+
+        .capabilities-list li {
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #4a5568;
+        }
+
+        .capabilities-list li:last-child {
+            border-bottom: none;
+        }
+
+        .capabilities-list li i {
+            color: #667eea;
+            width: 20px;
+        }
+
+        .quick-actions h4 {
+            color: #4a5568;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .quick-buttons {
+            display: grid;
+            gap: 10px;
+        }
+
+        .quick-btn {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            padding: 12px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+            font-size: 0.9rem;
+            color: #4a5568;
+            font-family: inherit;
+        }
+
+        .quick-btn:hover {
+            border-color: #667eea;
+            background: white;
+            transform: translateY(-2px);
+        }
+
+        /* Admin Styles */
+        .admin-container {
+            min-height: 70vh;
+        }
+
+        .login-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 60vh;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-card h2 {
+            color: #4a5568;
+            margin-bottom: 30px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4a5568;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .login-btn {
+            width: 100%;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: inherit;
+        }
+
+        .login-btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        /* Dashboard */
+        .dashboard-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+        }
+
+        .dashboard-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+        }
+
+        .dashboard-card h3 {
+            color: #4a5568;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed #cbd5e0;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f7fafc;
+        }
+
+        .upload-area.drag-over {
+            border-color: #667eea;
+            background: #edf2f7;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #cbd5e0;
+            margin-bottom: 15px;
+        }
+
+        .upload-area p {
+            color: #718096;
+            margin-bottom: 15px;
+        }
+
+        .browse-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .browse-btn:hover {
+            background: #5a6fd8;
+        }
+
+        /* Upload Progress */
+        .upload-progress {
+            margin-top: 15px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #48bb78;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .progress-text {
+            display: block;
+            text-align: center;
+            margin-top: 8px;
+            font-size: 0.9rem;
+            color: #718096;
+        }
+
+        /* Document List */
+        .document-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .action-btn {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+
+        .action-btn:hover {
+            background: #edf2f7;
+            border-color: #cbd5e0;
+        }
+
+        .documents-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .document-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .document-item:last-child {
+            border-bottom: none;
+        }
+
+        .document-info {
+            flex: 1;
+        }
+
+        .document-name {
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 4px;
+        }
+
+        .document-meta {
+            font-size: 0.8rem;
+            color: #718096;
+        }
+
+        .delete-btn {
+            background: #fed7d7;
+            color: #c53030;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.8rem;
+            font-family: inherit;
+        }
+
+        .delete-btn:hover {
+            background: #feb2b2;
+        }
+
+        /* Status Grid */
+        .status-grid {
+            display: grid;
+            gap: 15px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            color: #4a5568;
+            font-weight: 600;
+        }
+
+        .status-value {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .status-value.healthy {
+            background: #c6f6d5;
+            color: #276749;
+        }
+
+        .status-value.warning {
+            background: #feebc8;
+            color: #744210;
+        }
+
+        .status-value.error {
+            background: #fed7d7;
+            color: #c53030;
+        }
+
+        /* Utility Classes */
+        .hidden {
+            display: none !important;
+        }
+
+        .loading {
+            text-align: center;
+            color: #718096;
+            padding: 20px;
+        }
+
+        /* Page Management */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .chat-container {
+                height: 60vh;
+            }
+            
+            .message {
+                max-width: 90%;
+            }
+            
+            .dashboard-card {
+                padding: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .chat-header {
+                padding: 15px 20px;
+            }
+            
+            .chat-header h2 {
+                font-size: 1.2rem;
+            }
+            
+            .info-panel {
+                padding: 20px;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .dashboard-card {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Chat Interface -->
+        <div id="chatPage" class="page active">
+            <header class="header">
+                <div class="header-content">
+                    <h1><i class="fas fa-graduation-cap"></i> College Admin Assistant</h1>
+                    <nav class="nav-links">
+                        <button class="nav-btn" onclick="showPage('adminPage')">
+                            <i class="fas fa-cog"></i> Admin Panel
+                        </button>
+                    </nav>
+                </div>
+            </header>
+
+            <main class="main-content">
+                <div class="chat-container">
+                    <div class="chat-header">
+                        <h2><i class="fas fa-robot"></i> Chat Assistant</h2>
+                        <div class="status-indicator" id="statusIndicator">
+                            <span class="status-dot"></span>
+                            <span class="status-text">Loading...</span>
+                        </div>
+                    </div>
+
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="message bot-message">
+                            <div class="message-avatar">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <div class="message-content">
+                                <p>Hello! I'm your college administration assistant. I can help you with information about admissions, courses, faculty, schedules, and administrative procedures. How can I assist you today?</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-input-container">
+                        <div class="input-group">
+                            <input type="text" id="messageInput" placeholder="Ask about college information..." maxlength="500">
+                            <button id="sendButton" class="send-button">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        <div class="input-footer">
+                            <span class="char-count" id="charCount">0/500</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-panel">
+                    <h3><i class="fas fa-info-circle"></i> What I Can Help With</h3>
+                    <ul class="capabilities-list">
+                        <li><i class="fas fa-book"></i> Course information</li>
+                        <li><i class="fas fa-calendar"></i> Academic schedules</li>
+                        <li><i class="fas fa-users"></i> Faculty details</li>
+                        <li><i class="fas fa-file-alt"></i> Admission procedures</li>
+                        <li><i class="fas fa-building"></i> Campus facilities</li>
+                        <li><i class="fas fa-question-circle"></i> Administrative queries</li>
+                    </ul>
+                    
+                    <div class="quick-actions">
+                        <h4><i class="fas fa-bolt"></i> Quick Questions</h4>
+                        <div class="quick-buttons">
+                            <button class="quick-btn" data-question="What are the admission requirements?">
+                                Admission Requirements
+                            </button>
+                            <button class="quick-btn" data-question="What courses are available?">
+                                Available Courses
+                            </button>
+                            <button class="quick-btn" data-question="What is the academic calendar?">
+                                Academic Calendar
+                            </button>
+                            <button class="quick-btn" data-question="How to contact administration?">
+                                Contact Admin
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Admin Panel -->
+        <div id="adminPage" class="page">
+            <header class="header">
+                <div class="header-content">
+                    <h1><i class="fas fa-shield-alt"></i> Admin Dashboard</h1>
+                    <nav class="nav-links">
+                        <button class="nav-btn" onclick="showPage('chatPage')">
+                            <i class="fas fa-comments"></i> Chat Interface
+                        </button>
+                    </nav>
+                </div>
+            </header>
+
+            <div class="admin-container">
+                <!-- Login Section -->
+                <div class="login-section" id="loginSection">
+                    <div class="login-card">
+                        <h2><i class="fas fa-lock"></i> Admin Login</h2>
+                        <form id="loginForm">
+                            <div class="form-group">
+                                <label for="email">Email:</label>
+                                <input type="email" id="email" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="password">Password:</label>
+                                <input type="password" id="password" required>
+                            </div>
+                            <button type="submit" class="login-btn">
+                                <i class="fas fa-sign-in-alt"></i> Login
+                            </button>
+                        </form>
+                        <div style="margin-top: 20px; padding: 15px; background: #f7fafc; border-radius: 8px; font-size: 0.9rem;">
+                            <p><strong>Demo Credentials:</strong></p>
+                            <p>Email: admin@college.edu</p>
+                            <p>Password: any password works</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Section -->
+                <div class="dashboard-section hidden" id="dashboardSection">
+                    <div class="dashboard-grid">
+                        <!-- Document Management -->
+                        <div class="dashboard-card">
+                            <h3><i class="fas fa-file-upload"></i> Upload Documents</h3>
+                            <div class="upload-area" id="uploadArea">
+                                <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                                <p>Drag & drop PDF files here or click to browse</p>
+                                <input type="file" id="fileInput" accept=".pdf" multiple class="hidden">
+                                <button class="browse-btn" onclick="document.getElementById('fileInput').click()">
+                                    Browse Files
+                                </button>
+                            </div>
+                            <div class="upload-progress hidden" id="uploadProgress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="progressFill"></div>
+                                </div>
+                                <span class="progress-text" id="progressText">0%</span>
+                            </div>
+                        </div>
+
+                        <!-- Document List -->
+                        <div class="dashboard-card">
+                            <h3><i class="fas fa-files"></i> Managed Documents</h3>
+                            <div class="document-actions">
+                                <button class="action-btn" id="refreshDocs">
+                                    <i class="fas fa-sync-alt"></i> Refresh
+                                </button>
+                                <button class="action-btn" id="reloadKnowledge">
+                                    <i class="fas fa-brain"></i> Reload AI Knowledge
+                                </button>
+                            </div>
+                            <div class="documents-list" id="documentsList">
+                                <div class="loading">Please login to view documents</div>
+                            </div>
+                        </div>
+
+                        <!-- System Status -->
+                        <div class="dashboard-card">
+                            <h3><i class="fas fa-heartbeat"></i> System Status</h3>
+                            <div class="status-grid">
+                                <div class="status-item">
+                                    <span class="status-label">API Connection</span>
+                                    <span class="status-value" id="apiStatus">Checking...</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">Documents Loaded</span>
+                                    <span class="status-value" id="documentsStatus">Checking...</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">AI Model</span>
+                                    <span class="status-value" id="modelStatus">Checking...</span>
+                                </div>
+                                <div class="status-item">
+                                    <span class="status-label">Active Sessions</span>
+                                    <span class="status-value" id="sessionsStatus">Checking...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Page Management
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(pageId).classList.add('active');
+        }
+
+        // Chat Interface
+        class ChatInterface {
+            constructor() {
+                this.userId = this.generateUserId();
+                this.isLoading = false;
+                this.initializeEventListeners();
+                this.checkHealth();
+            }
+
+            generateUserId() {
+                return 'user_' + Math.random().toString(36).substr(2, 9);
+            }
+
+            initializeEventListeners() {
+                const messageInput = document.getElementById('messageInput');
+                const sendButton = document.getElementById('sendButton');
+                const charCount = document.getElementById('charCount');
+
+                // Send message on button click
+                sendButton.addEventListener('click', () => this.sendMessage());
+
+                // Send message on Enter key
+                messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                // Character count
+                messageInput.addEventListener('input', () => {
+                    const length = messageInput.value.length;
+                    charCount.textContent = `${length}/500`;
+                    
+                    if (length > 500) {
+                        charCount.style.color = '#e53e3e';
+                    } else {
+                        charCount.style.color = '#718096';
+                    }
+                });
+
+                // Quick question buttons
+                document.querySelectorAll('.quick-btn').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const question = button.getAttribute('data-question');
+                        messageInput.value = question;
+                        this.sendMessage();
+                    });
+                });
+
+                // Auto-focus input
+                messageInput.focus();
+            }
+
+            async sendMessage() {
+                const messageInput = document.getElementById('messageInput');
+                const message = messageInput.value.trim();
+
+                if (!message || this.isLoading) return;
+
+                // Clear input
+                messageInput.value = '';
+                document.getElementById('charCount').textContent = '0/500';
+
+                // Add user message to chat
+                this.addMessage('user', message);
+
+                // Show loading indicator
+                this.setLoading(true);
+
+                try {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            user_id: this.userId,
+                            user_type: 'student'
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    this.addMessage('bot', data.response);
+
+                } catch (error) {
+                    console.error('Chat error:', error);
+                    this.addMessage('bot', 'Sorry, I encountered an error. Please try again or contact support.');
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            addMessage(sender, content) {
+                const chatMessages = document.getElementById('chatMessages');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}-message`;
+
+                const avatar = document.createElement('div');
+                avatar.className = 'message-avatar';
+                
+                const avatarIcon = document.createElement('i');
+                avatarIcon.className = sender === 'user' ? 'fas fa-user' : 'fas fa-robot';
+                avatar.appendChild(avatarIcon);
+
+                const messageContent = document.createElement('div');
+                messageContent.className = 'message-content';
+                
+                const messageText = document.createElement('p');
+                messageText.textContent = content;
+                messageContent.appendChild(messageText);
+
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(messageContent);
+                chatMessages.appendChild(messageDiv);
+
+                // Scroll to bottom
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            setLoading(loading) {
+                this.isLoading = loading;
+                const sendButton = document.getElementById('sendButton');
+                const messageInput = document.getElementById('messageInput');
+
+                if (loading) {
+                    sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                    sendButton.disabled = true;
+                    messageInput.disabled = true;
+                } else {
+                    sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
+                    sendButton.disabled = false;
+                    messageInput.disabled = false;
+                    messageInput.focus();
+                }
+            }
+
+            async checkHealth() {
+                try {
+                    const response = await fetch('/api/health');
+                    const data = await response.json();
+                    
+                    const statusIndicator = document.getElementById('statusIndicator');
+                    const statusDot = statusIndicator.querySelector('.status-dot');
+                    const statusText = statusIndicator.querySelector('.status-text');
+
+                    if (data.groq_api_available && data.documents_loaded) {
+                        statusDot.className = 'status-dot';
+                        statusText.textContent = 'Online';
+                    } else {
+                        statusDot.className = 'status-dot offline';
+                        statusText.textContent = data.groq_api_available ? 'Learning...' : 'Configuring...';
+                    }
+                } catch (error) {
+                    console.error('Health check failed:', error);
+                    const statusIndicator = document.getElementById('statusIndicator');
+                    statusIndicator.querySelector('.status-dot').className = 'status-dot offline';
+                    statusIndicator.querySelector('.status-text').textContent = 'Offline';
+                }
+            }
+        }
+
+        // Admin Dashboard
+        class AdminDashboard {
+            constructor() {
+                this.authToken = null;
+                this.initializeEventListeners();
+                this.checkAuthentication();
+            }
+
+            initializeEventListeners() {
+                // Login form
+                document.getElementById('loginForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.handleLogin();
+                });
+
+                // File upload
+                const fileInput = document.getElementById('fileInput');
+                const uploadArea = document.getElementById('uploadArea');
+
+                fileInput.addEventListener('change', (e) => {
+                    this.handleFileUpload(e.target.files);
+                });
+
+                // Drag and drop
+                uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.add('drag-over');
+                });
+
+                uploadArea.addEventListener('dragleave', () => {
+                    uploadArea.classList.remove('drag-over');
+                });
+
+                uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.remove('drag-over');
+                    this.handleFileUpload(e.dataTransfer.files);
+                });
+
+                // Document management
+                document.getElementById('refreshDocs').addEventListener('click', () => {
+                    this.loadDocuments();
+                });
+
+                document.getElementById('reloadKnowledge').addEventListener('click', () => {
+                    this.reloadKnowledgeBase();
+                });
+
+                // Periodic status updates
+                setInterval(() => this.updateSystemStatus(), 30000);
+            }
+
+            async handleLogin() {
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+
+                try {
+                    const response = await fetch('/api/admin/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ email, password })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.status === 'success') {
+                        this.authToken = data.token;
+                        localStorage.setItem('adminToken', data.token);
+                        this.showDashboard();
+                        this.loadDocuments();
+                        this.updateSystemStatus();
+                        this.showNotification('Login successful!', 'success');
+                    } else {
+                        this.showNotification('Login failed: ' + (data.message || 'Invalid credentials'), 'error');
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    this.showNotification('Login failed. Please check your connection.', 'error');
+                }
+            }
+
+            checkAuthentication() {
+                const token = localStorage.getItem('adminToken');
+                if (token) {
+                    this.authToken = token;
+                    this.showDashboard();
+                    this.loadDocuments();
+                    this.updateSystemStatus();
+                }
+            }
+
+            showDashboard() {
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('dashboardSection').classList.remove('hidden');
+            }
+
+            async handleFileUpload(files) {
+                if (!this.authToken) {
+                    this.showNotification('Please login first', 'error');
+                    return;
+                }
+
+                const pdfFiles = Array.from(files).filter(file => 
+                    file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+                );
+
+                if (pdfFiles.length === 0) {
+                    this.showNotification('Please select PDF files only', 'error');
+                    return;
+                }
+
+                for (const file of pdfFiles) {
+                    await this.uploadFile(file);
+                }
+            }
+
+            async uploadFile(file) {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('token', this.authToken);
+
+                const progressBar = document.getElementById('progressFill');
+                const progressText = document.getElementById('progressText');
+                const uploadProgress = document.getElementById('uploadProgress');
+
+                uploadProgress.classList.remove('hidden');
+
+                try {
+                    // Simulate progress for better UX
+                    let progress = 0;
+                    const progressInterval = setInterval(() => {
+                        progress += 5;
+                        if (progress <= 90) {
+                            progressBar.style.width = `${progress}%`;
+                            progressText.textContent = `${progress}%`;
+                        }
+                    }, 100);
+
+                    const response = await fetch('/api/admin/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    clearInterval(progressInterval);
+
+                    if (!response.ok) {
+                        throw new Error(`Upload failed: ${response.statusText}`);
+                    }
+
+                    const result = await response.json();
+
+                    progressBar.style.width = '100%';
+                    progressText.textContent = '100%';
+
+                    setTimeout(() => {
+                        uploadProgress.classList.add('hidden');
+                        progressBar.style.width = '0%';
+                        progressText.textContent = '0%';
+                    }, 1000);
+
+                    this.showNotification(`Upload successful: ${result.message}`, 'success');
+                    this.loadDocuments();
+
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    uploadProgress.classList.add('hidden');
+                    this.showNotification('Upload failed: ' + error.message, 'error');
+                }
+            }
+
+            async loadDocuments() {
+                if (!this.authToken) return;
+
+                try {
+                    const response = await fetch('/api/admin/documents?token=' + this.authToken);
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to load documents');
+                    }
+
+                    const data = await response.json();
+                    this.displayDocuments(data.documents);
+
+                } catch (error) {
+                    console.error('Error loading documents:', error);
+                    document.getElementById('documentsList').innerHTML = 
+                        '<div class="loading">Error loading documents</div>';
+                }
+            }
+
+            displayDocuments(documents) {
+                const container = document.getElementById('documentsList');
+                
+                if (documents.length === 0) {
+                    container.innerHTML = '<div class="loading">No documents uploaded yet</div>';
+                    return;
+                }
+
+                container.innerHTML = documents.map(doc => `
+                    <div class="document-item">
+                        <div class="document-info">
+                            <div class="document-name">${this.escapeHtml(doc.name)}</div>
+                            <div class="document-meta">
+                                ${this.formatFileSize(doc.size)} • 
+                                ${new Date(doc.created).toLocaleDateString()} •
+                                ${doc.pages} pages
+                            </div>
+                        </div>
+                        <button class="delete-btn" onclick="adminDashboard.deleteDocument('${doc.name}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                `).join('');
+            }
+
+            async deleteDocument(filename) {
+                if (!confirm(`Are you sure you want to delete "${filename}"?`)) {
+                    return;
+                }
+
+                if (!this.authToken) return;
+
+                try {
+                    const response = await fetch(`/api/admin/documents/${encodeURIComponent(filename)}?token=${this.authToken}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Delete failed');
+                    }
+
+                    const result = await response.json();
+                    this.showNotification(result.message, 'success');
+                    this.loadDocuments();
+
+                } catch (error) {
+                    console.error('Delete error:', error);
+                    this.showNotification('Delete failed: ' + error.message, 'error');
+                }
+            }
+
+            async reloadKnowledgeBase() {
+                if (!this.authToken) return;
+
+                try {
+                    const response = await fetch('/api/admin/reload?token=' + this.authToken, {
+                        method: 'POST'
+                    });
+
+                    const result = await response.json();
+                    this.showNotification(result.message, 'success');
+                    this.updateSystemStatus();
+
+                } catch (error) {
+                    console.error('Reload error:', error);
+                    this.showNotification('Reload failed: ' + error.message, 'error');
+                }
+            }
+
+            async updateSystemStatus() {
+                try {
+                    const response = await fetch('/api/health');
+                    const data = await response.json();
+
+                    // Update status indicators
+                    this.updateStatus('apiStatus', data.groq_api_available, data.groq_api_available ? 'Connected' : 'No API Key');
+                    this.updateStatus('documentsStatus', data.documents_loaded, `${data.documents_count} documents`);
+                    this.updateStatus('modelStatus', data.documents_loaded, data.documents_loaded ? 'Ready' : 'Loading');
+                    this.updateStatus('sessionsStatus', true, `${data.active_sessions} active`);
+
+                } catch (error) {
+                    console.error('Status update error:', error);
+                    // Mark all as error
+                    ['apiStatus', 'documentsStatus', 'modelStatus', 'sessionsStatus'].forEach(id => {
+                        this.updateStatus(id, false, 'Error');
+                    });
+                }
+            }
+
+            updateStatus(elementId, isHealthy, text) {
+                const element = document.getElementById(elementId);
+                element.textContent = text;
+                element.className = 'status-value ' + (isHealthy ? 'healthy' : 'error');
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            escapeHtml(unsafe) {
+                return unsafe
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+
+            showNotification(message, type) {
+                // Create notification element
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 15px 20px;
+                    border-radius: 8px;
+                    color: white;
+                    font-weight: 600;
+                    z-index: 1000;
+                    animation: slideIn 0.3s ease;
+                    max-width: 300px;
+                    background: ${type === 'success' ? '#48bb78' : '#e53e3e'};
+                `;
+                
+                notification.textContent = message;
+                document.body.appendChild(notification);
+                
+                // Remove after 3 seconds
+                setTimeout(() => {
+                    notification.style.animation = 'slideOut 0.3s ease';
+                    setTimeout(() => {
+                        document.body.removeChild(notification);
+                    }, 300);
+                }, 3000);
+                
+                // Add keyframes for animation
+                if (!document.getElementById('notification-styles')) {
+                    const style = document.createElement('style');
+                    style.id = 'notification-styles';
+                    style.textContent = `
+                        @keyframes slideIn {
+                            from { transform: translateX(100%); opacity: 0; }
+                            to { transform: translateX(0); opacity: 1; }
+                        }
+                        @keyframes slideOut {
+                            from { transform: translateX(0); opacity: 1; }
+                            to { transform: translateX(100%); opacity: 0; }
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+            }
+        }
+
+        // Initialize applications when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            window.chatInterface = new ChatInterface();
+            window.adminDashboard = new AdminDashboard();
+        });
+    </script>
+</body>
+</html>
