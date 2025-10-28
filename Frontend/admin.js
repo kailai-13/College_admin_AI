@@ -20,4 +20,4 @@ addDocForm.addEventListener('submit', async (e) => {
     .catch(()=>{
         adminStatus.textContent = "Error adding document.";
     });
-});
+});  
